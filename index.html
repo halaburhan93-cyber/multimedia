@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="auth-pending">
+<head>
+  <meta charset="UTF-8" />
+  <!-- إخفاء الصفحة حتى يتأكد الحارس من تسجيل الدخول -->
+  <style>.auth-pending body { visibility: hidden; }</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MultiMedia Converter</title>
+  <meta name="description" content="محوّل وسائط متعددة: صور وصوت وفيديو داخل المتصفح مع حفظ في Supabase" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎛️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect x="4" y="10" width="30" height="30" rx="8" fill="var(--violet)" />
+          <circle cx="40" cy="38" r="18" fill="var(--magenta)" opacity=".9" />
+          <path d="M34 30 L50 38 L34 46 Z" fill="#fff" />
+        </svg>
+        <div>
+          <h1 class="brand-title" dir="ltr">MultiMedia Converter</h1>
+          <p class="brand-sub">حوّل الصور والصوت والفيديو داخل المتصفح، واحفظها في Supabase</p>
+        </div>
+      </div>
+      <div class="header-side">
+        <div id="dbStatus" class="status status--pending" role="status">
+          <span class="status-dot"></span><span class="status-text">جارٍ فحص الاتصال…</span>
+        </div>
+        <div class="user-menu">
+          <span class="user-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+          </span>
+          <span id="userEmail" class="user-email" dir="ltr"></span>
+          <button id="logoutBtn" class="btn btn--ghost btn--sm">تسجيل الخروج</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- ===== المحوّل ===== -->
+    <section class="converter" aria-labelledby="convTitle">
+      <div class="section-head">
+        <h2 id="convTitle">المحوّل</h2>
+        <div class="tabs" role="tablist" aria-label="نوع الوسائط">
+          <button class="tab is-active" role="tab" aria-selected="true" data-cat="image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>
+            صور
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-cat="audio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+            صوت
+          </button>
+          <button class="tab" role="tab" aria-selected="false" data-cat="video">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="14" height="14" rx="3"/><path d="M16 10l6-3v10l-6-3z"/></svg>
+            فيديو
+          </button>
+        </div>
+      </div>
+
+      <div class="pipeline">
+        <!-- المصدر -->
+        <div class="stage stage--source">
+          <h3 class="stage-title"><span class="step">1</span> اختر الملف</h3>
+          <label id="dropzone" class="dropzone" tabindex="0">
+            <input id="fileInput" type="file" accept="image/*" hidden />
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+            <strong>اسحب الملف هنا أو اضغط للاختيار</strong>
+            <span id="acceptHint" class="hint">PNG، JPG، WEBP، GIF، BMP، SVG…</span>
+          </label>
+          <div id="sourcePreview" class="preview" hidden></div>
+          <dl id="sourceInfo" class="meta" hidden></dl>
+          <button id="clearBtn" class="btn btn--ghost btn--sm" hidden>اختيار ملف آخر</button>
+        </div>
+
+        <!-- الإعدادات -->
+        <div class="stage stage--options">
+          <h3 class="stage-title"><span class="step">2</span> إعدادات التحويل</h3>
+          <form id="optionsForm" class="options" onsubmit="return false"></form>
+          <p id="optionsNote" class="note"></p>
+          <button id="convertBtn" class="btn btn--primary" disabled>حوّل الملف</button>
+          <div id="progress" class="progress" hidden>
+            <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+            <span id="progressText" class="progress-text">0%</span>
+          </div>
+        </div>
+
+        <!-- النتيجة -->
+        <div class="stage stage--result">
+          <h3 class="stage-title"><span class="step">3</span> النتيجة</h3>
+          <div id="resultEmpty" class="empty-result">
+            <p>ستظهر الملفات المحوَّلة هنا لتعاينها وتنزّلها أو تحفظها.</p>
+          </div>
+          <div id="resultBox" hidden>
+            <div id="resultPreview" class="preview"></div>
+            <dl id="resultInfo" class="meta"></dl>
+            <label class="check">
+              <input id="saveOriginal" type="checkbox" />
+              احفظ الملف الأصلي أيضًا
+            </label>
+            <div class="actions">
+              <button id="downloadBtn" class="btn btn--outline">تنزيل</button>
+              <button id="saveBtn" class="btn btn--primary">حفظ في Supabase</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== المكتبة ===== -->
+    <section class="library" aria-labelledby="libTitle">
+      <div class="section-head">
+        <h2 id="libTitle">الملفات المحفوظة <span id="libCount" class="count">0</span></h2>
+        <div class="lib-tools">
+          <div class="chips" role="group" aria-label="تصفية">
+            <button class="chip is-active" data-filter="all">الكل</button>
+            <button class="chip" data-filter="image">صور</button>
+            <button class="chip" data-filter="audio">صوت</button>
+            <button class="chip" data-filter="video">فيديو</button>
+          </div>
+          <input id="searchInput" class="search" type="search" placeholder="ابحث باسم الملف" />
+          <button id="refreshBtn" class="btn btn--ghost btn--sm" title="تحديث القائمة">تحديث</button>
+        </div>
+      </div>
+      <div id="libraryGrid" class="grid"></div>
+      <div id="libraryEmpty" class="empty-lib">
+        <p>لا توجد ملفات محفوظة بعد. حوّل ملفًا ثم اضغط «حفظ في Supabase».</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      مشروع تخصص تقنية الوسائط المتعددة وتقنيات الويب — HTML وCSS وJavaScript وSupabase
+    </div>
+  </footer>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- مكتبة Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <!-- إعدادات المشروع (ضع مفاتيحك هنا) -->
+  <script src="js/config.js"></script>
+  <!-- العميل المشترك وحارس المصادقة -->
+  <script src="js/supabase-client.js"></script>
+  <script src="js/auth-guard.js"></script>
+  <!-- أدوات الترميز (WAV و BMP) -->
+  <script src="js/encoders.js"></script>
+  <!-- منطق التطبيق -->
+  <script src="js/app.js"></script>
+</body>
+</html>
